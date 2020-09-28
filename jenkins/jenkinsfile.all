@@ -120,32 +120,41 @@ catch (Exception e)
 def common_backend_builder = '''
 umask 000
 mkdir -p /git/casual/dumps
-cd /git/casual
-find . -name "*.gc*" -print | xargs rm
-find . -name "report.xml" -print | xargs rm
-rm -rf middleware/.casual/unittest/.singleton/.domain-singleton
+
+cd /git/casual 
+find . -name "*.gc*" -print | xargs rm > /dev/null
+find . -name "report.xml" -print | xargs rm > /dev/null
+rm -rf middleware/.casual/unittest/.singleton/.domain-singleton > /dev/null
+
+export CASUAL_THIRDPARTY=/git/casual-thirdparty
+cd $CASUAL_THIRDPARTY
 casual-make --no-colors -d -a --use-valgrind make && \
    casual-make --no-colors clean && \
    casual-make --no-colors -d -a --use-valgrind compile && \
    casual-make --no-colors -d -a --use-valgrind link && \
-   ISOLATED_UNITTEST_DIRECTIVES="--gtest_output='xml:report.xml'" casual-make --no-colors test && \
-   mkdir -p /git/casual/coverage && \
-   casual-make --no-colors make && \
-   casual-make --no-colors clean && \
-   casual-make --no-colors compile && \
-   casual-make --no-colors link && \
-   casual-make --no-colors install && \
-   cd /opt/casual && \
-   tar cf /git/casual/casual-middleware.tar . && \
-   cd /git/casual && python thirdparty/setup/install_nginx.py && \
-   cd /opt/ && \
-   tar cf casual-middleware.tar casual && \
-   cp casual-middleware.tar /git/casual/. && \
-   cp /git/casual/package/casual-middleware.spec /root/rpmbuild/SPECS/. && \
-   rpmbuild -bb --noclean --define "casual_version $CASUAL_VERSION" --define "casual_release $CASUAL_RELEASE" --define "distribution $DISTRIBUTION" /root/rpmbuild/SPECS/casual-middleware.spec  && \
-   cp /root/rpmbuild/RPMS/x86_64/casual-middleware*.rpm /git/casual/. && \
-   performCoverageMeasuring 
-   returncode=$?
+   cd /git/casual && \
+   casual-make --no-colors -d -a --use-valgrind make && \
+      casual-make --no-colors clean && \
+      casual-make --no-colors -d -a --use-valgrind compile && \
+      casual-make --no-colors -d -a --use-valgrind link && \
+      ISOLATED_UNITTEST_DIRECTIVES="--gtest_output='xml:report.xml'" casual-make --no-colors test && \
+      mkdir -p /git/casual/coverage && \
+      casual-make --no-colors make && \
+      casual-make --no-colors clean && \
+      casual-make --no-colors compile && \
+      casual-make --no-colors link && \
+      casual-make --no-colors install && \
+      cd /opt/casual && \
+      tar cf /git/casual/casual-middleware.tar . && \
+      cd /git/casual && python thirdparty/setup/install_nginx.py && \
+      cd /opt/ && \
+      tar cf casual-middleware.tar casual && \
+      cp casual-middleware.tar /git/casual/. && \
+      cp /git/casual/package/casual-middleware.spec /root/rpmbuild/SPECS/. && \
+      rpmbuild -bb --noclean --define "casual_version $CASUAL_VERSION" --define "casual_release $CASUAL_RELEASE" --define "distribution $DISTRIBUTION" /root/rpmbuild/SPECS/casual-middleware.spec  && \
+      cp /root/rpmbuild/RPMS/x86_64/casual-middleware*.rpm /git/casual/. && \
+      performCoverageMeasuring 
+      returncode=$?
 
 cd /git/casual/
 find /git/casual -user root | xargs chmod 777
@@ -320,10 +329,19 @@ try
 
                deleteDir()
 
-               stage('Build backend - Unittest - Suse')
+               stage( "checkout repos")
                {
+
+                  // casual-thirdparty
+                  git branch: 'master', url: 'https://bitbucket.org/casualcore/casual-thirdparty.git'
+
+                  // casual
                   checkout scm
-                  
+
+               }
+
+               stage('Build backend - Unittest - Suse')
+               {                  
                   unstash 'frontend'
                   
                   build( 'susecompile', 'casual/suse-builder', backend_builder_suse)
@@ -348,10 +366,19 @@ try
             { 
                deleteDir()
 
+               stage( "checkout repos")
+               {
+
+                  // casual-thirdparty
+                  git branch: 'master', url: 'https://bitbucket.org/casualcore/casual-thirdparty.git'
+
+                  // casual
+                  checkout scm
+
+               }
+
                stage('Build backend - Unittest/CodeCoverage - Centos')
                {
-                  checkout scm
-                  
                   unstash 'frontend'
                   
                   build( 'centoscompile', 'casual/centos-builder', backend_builder_centos)
