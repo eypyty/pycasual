@@ -128,8 +128,8 @@ export CASUAL_BUILD_HOME=$CASUAL_REPO_ROOT
 export CASUAL_OPTIONAL_INCLUDE_PATHS="$CASUAL_TOOLS_HOME/thirdparty/unittest/gtest/include"
 export CASUAL_OPTIONAL_LIBRARY_PATHS="$CASUAL_TOOLS_HOME/thirdparty/unittest/gtest/bin"
 export CASUAL_HOME=/opt/casual
-export PATH $CASUAL_BUILD_HOME/tools/bin:$CASUAL_TOOLS_HOME/bin:$CASUAL_HOME/bin:$PATH
-export LD_LIBRARY_PATH $LD_LIBRARY_PATH:$CASUAL_HOME/lib:$CASUAL_BUILD_HOME/configuration/bin:$CASUAL_BUILD_HOME/common/bin:$CASUAL_BUILD_HOME/serviceframework/bin:$CASUAL_BUILD_HOME/xatmi/bin:/usr/local/lib
+export PATH=$CASUAL_BUILD_HOME/tools/bin:$CASUAL_TOOLS_HOME/bin:$CASUAL_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CASUAL_HOME/lib:$CASUAL_BUILD_HOME/configuration/bin:$CASUAL_BUILD_HOME/common/bin:$CASUAL_BUILD_HOME/serviceframework/bin:$CASUAL_BUILD_HOME/xatmi/bin:/usr/local/lib
 
 cd /git/casual 
 find . -name "*.gc*" -print | xargs rm > /dev/null
