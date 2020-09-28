@@ -136,7 +136,7 @@ find . -name "*.gc*" -print | xargs rm > /dev/null
 find . -name "report.xml" -print | xargs rm > /dev/null
 rm -rf middleware/.casual/unittest/.singleton/.domain-singleton > /dev/null
 
-export CASUAL_THIRDPARTY=/git/casual-thirdparty
+export CASUAL_THIRDPARTY=/git/casual/casual-thirdparty
 cd $CASUAL_THIRDPARTY
 casual-make --no-colors -d -a --use-valgrind make && \
    casual-make --no-colors clean && \
