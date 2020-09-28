@@ -121,7 +121,7 @@ def common_backend_builder = '''
 umask 000
 mkdir -p /git/casual/dumps
 
-export CASUAL_REPO_ROOT=/git/casual
+export CASUAL_REPO_ROOT=/git/casual/casual
 export CASUAL_TOOLS_HOME=$CASUAL_REPO_ROOT
 export PYTHONPATH=$CASUAL_REPO_ROOT/..
 export CASUAL_BUILD_HOME=$CASUAL_REPO_ROOT
