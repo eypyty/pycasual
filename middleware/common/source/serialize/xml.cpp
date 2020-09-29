@@ -94,8 +94,7 @@ namespace casual
                            if( ! xml || xml[ 0] == '\n')
                               return operator ()( document, empty::document);
 
-                           //local::check( m_document.load_string( xml));
-                           check( document.load( xml, parse::directive));
+                           check( document.load_string( xml, parse::directive));
                            return document;
                         }
 
