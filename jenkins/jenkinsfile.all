@@ -142,27 +142,27 @@ casual-make --no-colors -d -a --use-valgrind make && \
    casual-make --no-colors clean && \
    casual-make --no-colors -d -a --use-valgrind compile && \
    casual-make --no-colors -d -a --use-valgrind link && \
-   cd /git/casual && \
+   cd $CASUAL_REPO_ROOT && \
    casual-make --no-colors -d -a --use-valgrind make && \
       casual-make --no-colors clean && \
       casual-make --no-colors -d -a --use-valgrind compile && \
       casual-make --no-colors -d -a --use-valgrind link && \
       ISOLATED_UNITTEST_DIRECTIVES="--gtest_output='xml:report.xml'" casual-make --no-colors test && \
-      mkdir -p /git/casual/coverage && \
+      mkdir -p $CASUAL_REPO_ROOT/coverage && \
       casual-make --no-colors make && \
       casual-make --no-colors clean && \
       casual-make --no-colors compile && \
       casual-make --no-colors link && \
       casual-make --no-colors install && \
       cd /opt/casual && \
-      tar cf /git/casual/casual-middleware.tar . && \
-      cd /git/casual && python thirdparty/setup/install_nginx.py && \
+      tar cf $CASUAL_REPO_ROOT/casual-middleware.tar . && \
+      cd $CASUAL_REPO_ROOT && python thirdparty/setup/install_nginx.py && \
       cd /opt/ && \
       tar cf casual-middleware.tar casual && \
       cp casual-middleware.tar /git/casual/. && \
-      cp /git/casual/package/casual-middleware.spec /root/rpmbuild/SPECS/. && \
+      cp $CASUAL_REPO_ROOT/package/casual-middleware.spec /root/rpmbuild/SPECS/. && \
       rpmbuild -bb --noclean --define "casual_version $CASUAL_VERSION" --define "casual_release $CASUAL_RELEASE" --define "distribution $DISTRIBUTION" /root/rpmbuild/SPECS/casual-middleware.spec  && \
-      cp /root/rpmbuild/RPMS/x86_64/casual-middleware*.rpm /git/casual/. && \
+      cp /root/rpmbuild/RPMS/x86_64/casual-middleware*.rpm $CASUAL_REPO_ROOT/. && \
       performCoverageMeasuring 
       returncode=$?
 
