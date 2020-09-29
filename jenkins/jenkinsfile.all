@@ -121,12 +121,22 @@ def common_backend_builder = '''
 umask 000
 mkdir -p /git/casual/dumps
 
+export CASUAL_REPO_ROOT=/git/casual/casual
+export CASUAL_TOOLS_HOME=$CASUAL_REPO_ROOT
+export PYTHONPATH=$CASUAL_REPO_ROOT/..
+export CASUAL_BUILD_HOME=$CASUAL_REPO_ROOT
+export CASUAL_OPTIONAL_INCLUDE_PATHS="$CASUAL_TOOLS_HOME/thirdparty/unittest/gtest/include"
+export CASUAL_OPTIONAL_LIBRARY_PATHS="$CASUAL_TOOLS_HOME/thirdparty/unittest/gtest/bin"
+export CASUAL_HOME=/opt/casual
+export PATH=$CASUAL_BUILD_HOME/tools/bin:$CASUAL_TOOLS_HOME/bin:$CASUAL_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CASUAL_HOME/lib:$CASUAL_BUILD_HOME/configuration/bin:$CASUAL_BUILD_HOME/common/bin:$CASUAL_BUILD_HOME/serviceframework/bin:$CASUAL_BUILD_HOME/xatmi/bin:/usr/local/lib
+
 cd /git/casual 
 find . -name "*.gc*" -print | xargs rm > /dev/null
 find . -name "report.xml" -print | xargs rm > /dev/null
 rm -rf middleware/.casual/unittest/.singleton/.domain-singleton > /dev/null
 
-export CASUAL_THIRDPARTY=/git/casual-thirdparty
+export CASUAL_THIRDPARTY=/git/casual/casual-thirdparty
 cd $CASUAL_THIRDPARTY
 casual-make --no-colors -d -a --use-valgrind make && \
    casual-make --no-colors clean && \
@@ -332,12 +342,17 @@ try
                stage( "checkout repos")
                {
 
-                  // casual-thirdparty
-                  git branch: 'master', url: 'https://bitbucket.org/casualcore/casual-thirdparty.git'
+                  dir("casual-thirdparty")
+                  {
+                     // casual-thirdparty
+                     git branch: 'master', url: 'https://bitbucket.org/casualcore/casual-thirdparty.git'
+                  }
 
-                  // casual
-                  checkout scm
-
+                  dir("casual")
+                  {
+                     // casual
+                     checkout scm
+                  }
                }
 
                stage('Build backend - Unittest - Suse')
@@ -369,12 +384,17 @@ try
                stage( "checkout repos")
                {
 
-                  // casual-thirdparty
-                  git branch: 'master', url: 'https://bitbucket.org/casualcore/casual-thirdparty.git'
+                  dir("casual-thirdparty")
+                  {
+                     // casual-thirdparty
+                     git branch: 'master', url: 'https://bitbucket.org/casualcore/casual-thirdparty.git'
+                  }
 
-                  // casual
-                  checkout scm
-
+                  dir("casual")
+                  {
+                     // casual
+                     checkout scm
+                  }
                }
 
                stage('Build backend - Unittest/CodeCoverage - Centos')
