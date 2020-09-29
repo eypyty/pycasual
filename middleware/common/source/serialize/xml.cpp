@@ -94,8 +94,7 @@ namespace casual
                            if( ! xml || xml[ 0] == '\n')
                               return operator ()( document, empty::document);
 
-                           //local::check( m_document.load_string( xml));
-                           check( document.load( xml, parse::directive));
+                           check( document.load_string( xml, parse::directive));
                            return document;
                         }
 
@@ -190,18 +189,10 @@ namespace casual
                               return std::make_tuple( 0, false);
 
                            // Stack 'em backwards
-
-                           // TODO: We need to filter elements not named 'element',
-                           // but with 1.4 that is really simple, so we just wait
-
-                           // 1.2
-                           const auto content = m_stack.back().children();
-                           // 1.4 (with bidirectional xml_named_node_iterator)
-                           //const auto content = m_stack.back().children( "element");
+                           const auto content = m_stack.back().children( "element");
                            std::reverse_copy( std::begin( content), std::end( content), std::back_inserter( m_stack));
 
                            return std::make_tuple( std::distance( std::begin( content), std::end( content)), true);
-
                         }
 
                         void container_end( const char* const name)
