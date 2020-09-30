@@ -34,14 +34,6 @@ namespace casual
                {
                   std::vector< std::string> keys() { return { "xml", common::buffer::type::xml()};};
 
-                  // This implementation uses pugixml 1.2
-                  //
-                  // There are some flaws in this implementation and we're waiting
-                  // for libpugixml-dev with 1.4 so they can be fixed
-                  //
-                  // The 1.4/1.5 do offer a slight different API, so we need to adapt
-                  // to it to fix the flaws
-
                   namespace reader
                   {
                      namespace parse
@@ -49,62 +41,33 @@ namespace casual
                         constexpr auto directive = pugi::parse_escapes | pugi::parse_ws_pcdata_single;
                      } // parse
 
-                     namespace empty
+                     namespace load
                      {
-                        constexpr const auto document =  R"(<?xml version="1.0"?><value></value>)";
-                     } // empty
-
-                     struct Load
-                     {
-                        const pugi::xml_document& operator () ( pugi::xml_document& document, std::istream& stream)
-                        {
-                           check( document.load( stream, parse::directive));
-                           return document;
-                        }
-
-                        const pugi::xml_document& operator () ( pugi::xml_document& document, const std::string& xml)
-                        {
-                           if( xml.empty())
-                              return operator ()( document, empty::document);
-
-                           check( document.load_buffer( xml.data(), xml.size(), parse::directive));
-                           return document;
-                        }
-
-                        const pugi::xml_document& operator () ( pugi::xml_document& document, const platform::binary::type& xml)
-                        {
-                           if( xml.empty())
-                              return operator ()( document, empty::document);
-
-                           check( document.load_buffer( xml.data(), xml.size(), parse::directive));
-                           return document;
-                        }
-
-                        const pugi::xml_document& operator () ( pugi::xml_document& document, const char* const xml, const platform::size::type size)
-                        {
-                           if( ! size || ! xml)
-                              return operator ()( document, empty::document);
-
-                           check( document.load_buffer( xml, size, parse::directive));
-                           return document;
-                        }
-
-                        const pugi::xml_document& operator () ( pugi::xml_document& document, const char* const xml)
-                        {
-                           if( ! xml || xml[ 0] == '\n')
-                              return operator ()( document, empty::document);
-
-                           check( document.load_string( xml, parse::directive));
-                           return document;
-                        }
-
-                     private:
                         void check( const pugi::xml_parse_result& result)
                         {
                            if( ! result) 
                               code::raise::error( code::casual::invalid_document, result.description());
                         }
-                     };
+
+                        pugi::xml_document document( std::istream& stream)
+                        {
+                           pugi::xml_document result;
+                           check( result.load( stream, parse::directive));
+                           return result;
+                        }
+
+                        template<typename T>
+                        pugi::xml_document document( const T& xml)
+                        {
+                           pugi::xml_document result;
+                           if( xml.empty())
+                              check( result.load_string( R"(<?xml version="1.0"?><value/>)", parse::directive));
+                           else
+                              check( result.load_buffer( xml.data(), xml.size(), parse::directive));
+                           return result;
+                        }
+
+                     } // load
 
                      namespace canonical
                      {
@@ -127,7 +90,7 @@ namespace casual
                            auto operator() ( const Node& document)
                            {
                               // take care of the document node
-                              for( auto& child : filter::children( document))
+                              for( const auto& child : filter::children( document))
                               {
                                  element( child);
                               }
@@ -139,13 +102,13 @@ namespace casual
 
                            void element( const Node& node)
                            {
-                              auto children = filter::children( node);
+                              const auto children = filter::children( node);
 
                               if( children)
                               {
                                  m_canonical.composite_start( node.name());
 
-                                 for( auto& child : children)
+                                 for( const auto& child : children)
                                  {
                                     element( child);
                                  }
@@ -181,7 +144,10 @@ namespace casual
                         //!
                         //! @note Any possible document has to outlive the reader
                         template< typename... Ts>
-                        explicit Implementation( Ts&&... ts) : m_stack{ Load{}( m_document, std::forward< Ts>( ts)...)} {}
+                        explicit Implementation( Ts&&... ts) : m_document{ load::document( std::forward< Ts>( ts)...)} 
+                        {
+                           m_stack.push_back(m_document);
+                        }
 
                         std::tuple< platform::size::type, bool> container_start( const platform::size::type size, const char* const name)
                         {
