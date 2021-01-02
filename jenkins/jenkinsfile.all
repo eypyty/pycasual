@@ -122,7 +122,7 @@ umask 000
 export CASUAL_REPO_ROOT=/git/casual/casual
 export CASUAL_TOOLS_HOME=$CASUAL_REPO_ROOT
 export CASUAL_MAKE_HOME=$CASUAL_REPO_ROOT/../casual-make/source
-export PYTHONPATH=$CASUAL_MAKE_HOME
+export PYTHONPATH=$CASUAL_MAKE_HOME:$CASUAL_REPO_ROOT/middleware/make
 export CASUAL_THIRDPARTY=/git/casual/casual-thirdparty
 export CASUAL_BUILD_HOME=$CASUAL_REPO_ROOT
 export CASUAL_OPTIONAL_INCLUDE_PATHS="${CASUAL_THIRDPARTY}/googletest/include"
