@@ -121,13 +121,14 @@ def common_backend_builder = '''
 umask 000
 export CASUAL_REPO_ROOT=/git/casual/casual
 export CASUAL_TOOLS_HOME=$CASUAL_REPO_ROOT
-export PYTHONPATH=$CASUAL_REPO_ROOT/..
+export CASUAL_MAKE_HOME=$CASUAL_REPO_ROOT/../casual-make/source
+export PYTHONPATH=$CASUAL_MAKE_HOME
 export CASUAL_THIRDPARTY=/git/casual/casual-thirdparty
 export CASUAL_BUILD_HOME=$CASUAL_REPO_ROOT
 export CASUAL_OPTIONAL_INCLUDE_PATHS="${CASUAL_THIRDPARTY}/googletest/include"
 export CASUAL_OPTIONAL_LIBRARY_PATHS="${CASUAL_THIRDPARTY}/googletest/bin"
 export CASUAL_HOME=/opt/casual
-export PATH=$CASUAL_BUILD_HOME/tools/bin:$CASUAL_TOOLS_HOME/bin:$CASUAL_HOME/bin:$PATH
+export PATH=$CASUAL_MAKE_HOME:$CASUAL_BUILD_HOME/tools/bin:$CASUAL_TOOLS_HOME/bin:$CASUAL_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CASUAL_HOME/lib:$CASUAL_BUILD_HOME/configuration/bin:$CASUAL_BUILD_HOME/common/bin:$CASUAL_BUILD_HOME/serviceframework/bin:$CASUAL_BUILD_HOME/xatmi/bin:/usr/local/lib
 
 find $CASUAL_REPO_ROOT -name "*.gc*" -print | xargs rm > /dev/null
@@ -139,7 +140,7 @@ cd $CASUAL_REPO_ROOT && \
       casual-make --no-colors clean && \
       casual-make --no-colors -d -a --use-valgrind compile && \
       casual-make --no-colors -d -a --use-valgrind link && \
-      ISOLATED_UNITTEST_DIRECTIVES="--gtest_filter=-casual_queue_forward.* --gtest_color=no --gtest_output='xml:report.xml'" casual-make --no-colors test > /dev/null && \
+      ISOLATED_UNITTEST_DIRECTIVES="--gtest_filter=-casual_queue_forward.* --gtest_color=no --gtest_output='xml:report.xml'" casual-make --no-colors test && \
       mkdir -p $CASUAL_REPO_ROOT/coverage && \
       casual-make --no-colors make && \
       casual-make --no-colors clean && \
@@ -348,7 +349,13 @@ try
                   dir("casual-thirdparty")
                   {
                      // casual-thirdparty
-                     git branch: 'master', url: 'https://bitbucket.org/casualcore/casual-thirdparty.git'
+                     git branch: 'feature/new-casual-make', url: 'https://bitbucket.org/casualcore/casual-thirdparty.git'
+                  }
+
+                  dir("casual-make")
+                  {
+                     // casual-make
+                     git branch: 'feature/0.1/dev', url: 'https://bitbucket.org/casualcore/casual-make.git'
                   }
 
                   dir("casual")
@@ -448,7 +455,13 @@ try
                   dir("casual-thirdparty")
                   {
                      // casual-thirdparty
-                     git branch: 'master', url: 'https://bitbucket.org/casualcore/casual-thirdparty.git'
+                     git branch: 'feature/new-casual-make', url: 'https://bitbucket.org/casualcore/casual-thirdparty.git'
+                  }
+
+                  dir("casual-make")
+                  {
+                     // casual-make
+                     git branch: 'feature/0.1/dev', url: 'https://bitbucket.org/casualcore/casual-make.git'
                   }
 
                   dir("casual")

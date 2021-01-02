@@ -1,4 +1,4 @@
-from casual.middleware.make.dsl import *
+from casual.make.api import *
 
 
 
@@ -9,9 +9,9 @@ IncludePaths([
    '../domain/include',
    '../service/include',
    '../xatmi/include',
-   '../serviceframework/include',
-   '$(CASUAL_OPTIONAL_INCLUDE_PATHS)',
-   ])
+   '../serviceframework/include'] + 
+   os.getenv('CASUAL_OPTIONAL_INCLUDE_PATHS').split()
+   )
 
 
 LibraryPaths([
@@ -22,9 +22,9 @@ LibraryPaths([
    '../service/bin',
    '../serviceframework/bin',
    '../xatmi/bin',
-   '../queue/bin',
-   '$(CASUAL_OPTIONAL_LIBRARY_PATHS)',
-])
+   '../queue/bin'] + 
+    os.getenv('CASUAL_OPTIONAL_LIBRARY_PATHS').split()
+   )
 
 
 install_lib = []
@@ -179,9 +179,10 @@ target = LinkExecutable( "bin/casual-gateway-binary-protocol",
 
 install_example_bin.append( target)
 
+casual_home = os.getenv('CASUAL_HOME')
 
-Install( install_example_bin,'$(CASUAL_HOME)/example/bin')
-Install( install_bin,'$(CASUAL_HOME)/bin')
-Install( install_lib,'$(CASUAL_HOME)/lib')
+Install( install_example_bin, casual_home + '/example/bin')
+Install( install_bin, casual_home + '/bin')
+Install( install_lib, casual_home + '/lib')
 
 

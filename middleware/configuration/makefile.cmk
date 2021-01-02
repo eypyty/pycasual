@@ -1,21 +1,20 @@
-from casual.middleware.make.dsl import *
+from casual.make.api import *
 
 IncludePaths([
    'include',
    '../common/include',
    '../xatmi/include',
-   '../serviceframework/include',
-   '$(CASUAL_OPTIONAL_INCLUDE_PATHS)',
-   ])
+   '../serviceframework/include'] + 
+   os.getenv('CASUAL_OPTIONAL_INCLUDE_PATHS').split())
 
 
 LibraryPaths([
     'bin',
     '../common/bin',
     '../serviceframework/bin',
-    '../xatmi/bin',
-    '$(CASUAL_OPTIONAL_LIBRARY_PATHS)',
-    ])
+    '../xatmi/bin'] + 
+    os.getenv('CASUAL_OPTIONAL_LIBRARY_PATHS').split()
+   )
 
 install_libs = []
 
@@ -92,8 +91,10 @@ LinkExecutable( 'bin/casual-configuration-documentation',
       'casual-common'
    ])  
 
+casual_home = os.getenv('CASUAL_HOME')
+
 # Install
-Install( install_libs, '$(CASUAL_HOME)/lib')
-Install( 'resources.yaml', '$(CASUAL_HOME)/configuration/example')
+Install( install_libs,  casual_home + '/lib')
+Install( 'resources.yaml',  casual_home + '/configuration/example')
 
 
