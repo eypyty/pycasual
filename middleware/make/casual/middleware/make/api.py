@@ -112,7 +112,7 @@ def link_server( input):
          selector.library_directive(libraries) +  \
          selector.library_paths_directive( library_paths) + \
          common.add_item_to_list( include_paths, '-I')
-   env = selector.local_library_path()
-   executor.execute_command( cmd, destination, context_directory, env=env)
+
+   executor.execute_command( cmd, destination, context_directory)
 
 
