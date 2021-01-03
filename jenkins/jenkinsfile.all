@@ -128,17 +128,17 @@ export CASUAL_BUILD_HOME=$CASUAL_REPO_ROOT
 export CASUAL_OPTIONAL_INCLUDE_PATHS="${CASUAL_THIRDPARTY}/googletest/include"
 export CASUAL_OPTIONAL_LIBRARY_PATHS="${CASUAL_THIRDPARTY}/googletest/bin"
 export CASUAL_HOME=/opt/casual
-export PATH=$CASUAL_MAKE_HOME:$CASUAL_BUILD_HOME/tools/bin:$CASUAL_TOOLS_HOME/bin:$CASUAL_HOME/bin:$PATH
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CASUAL_HOME/lib:$CASUAL_BUILD_HOME/configuration/bin:$CASUAL_BUILD_HOME/common/bin:$CASUAL_BUILD_HOME/serviceframework/bin:$CASUAL_BUILD_HOME/xatmi/bin:/usr/local/lib
+export PATH=$CASUAL_MAKE_HOME:$CASUAL_BUILD_HOME/middleware/tools/bin:$CASUAL_TOOLS_HOME/bin:$CASUAL_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CASUAL_HOME/lib:$CASUAL_BUILD_HOME/middleware/configuration/bin:$CASUAL_BUILD_HOME/middleware/common/bin:$CASUAL_BUILD_HOME/middleware/serviceframework/bin:$CASUAL_BUILD_HOME/middleware/xatmi/bin:/usr/local/lib
 
 find $CASUAL_REPO_ROOT -name "*.gc*" -print | xargs rm > /dev/null
 find $CASUAL_REPO_ROOT -name "report.xml" -print | xargs rm > /dev/null
 rm -rf $CASUAL_REPO_ROOT/middleware/.casual/unittest/.singleton/.domain-singleton > /dev/null
 
 cd $CASUAL_REPO_ROOT && \
-      casual-make --no-colors clean && \
-      casual-make --no-colors -d -a --use-valgrind compile && \
-      casual-make --no-colors -d -a --use-valgrind link && \
+      casual-make --stat --no-colors clean && \
+      casual-make --stat --no-colors -d -a --use-valgrind compile && \
+      casual-make --stat --no-colors -d -a --use-valgrind link && \
       ISOLATED_UNITTEST_DIRECTIVES="--gtest_filter=-casual_queue_forward.* --gtest_color=no --gtest_output='xml:report.xml'" casual-make --no-colors test && \
       mkdir -p $CASUAL_REPO_ROOT/coverage && \
       casual-make --no-colors clean && \
