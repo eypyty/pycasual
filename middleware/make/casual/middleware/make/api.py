@@ -111,6 +111,7 @@ def link_server( input):
          ['-o', destination.filename] + directive + ['-f'] + [" ".join( objects)] + \
          selector.library_directive(libraries) +  \
          selector.library_paths_directive( library_paths) + \
+         selector.LINK_DIRECTIVES_EXE + \
          common.add_item_to_list( include_paths, '-I')
 
    executor.execute_command( cmd, destination, context_directory)
