@@ -11,7 +11,7 @@ import casual.make.tools.executor as executor
 import casual.make.platform.common as common
 
 import importlib
-compiler_handler = os.getenv("CASUAL_COMPILER_HANDLER")
+compiler_handler = os.getenv("CASUAL_MAKE_COMPILER_HANDLER")
 selector = importlib.import_module( compiler_handler)
 
 def BUILD_SERVER():
