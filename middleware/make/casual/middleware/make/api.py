@@ -24,7 +24,8 @@ api.link_target.add_dependency( [link_server_target])
 def caller():
    
    name = inspect.getouterframes( inspect.currentframe())[2][1]
-   return os.path.abspath( name)
+   path = os.path.abspath( name)
+   return model.register(name=path, filename=path, makefile = path)
 
 #
 # New functions adding functionality
@@ -51,10 +52,10 @@ def LinkServer( name, objects, libraries, serverdefinition, resources=None, conf
    """
 
    makefile = caller()
-   directory, dummy = os.path.split( makefile)
+   directory, dummy = os.path.split( makefile.filename)
 
    full_executable_name = selector.expanded_executable_name(name, directory)
-   executable_target = model.register( full_executable_name, full_executable_name, makefile = makefile)
+   executable_target = model.register( full_executable_name, full_executable_name, makefile = makefile.filename)
 
    directive = []
    if resources:
@@ -77,8 +78,8 @@ def LinkServer( name, objects, libraries, serverdefinition, resources=None, conf
       'destination' : executable_target, 
       'objects' : objects, 
       'libraries': libraries, 
-      'library_paths': model.library_paths( makefile), 
-      'include_paths': model.include_paths( makefile), 
+      'library_paths': model.library_paths( makefile.filename), 
+      'include_paths': model.include_paths( makefile.filename), 
       'directive': directive
       }
 
@@ -88,7 +89,7 @@ def LinkServer( name, objects, libraries, serverdefinition, resources=None, conf
    link_server_target.add_dependency( model.get( BUILD_SERVER()))
    link_server_target.add_dependency( executable_target)
 
-   api.clean_target.add_recipe( Recipe( recipe.clean, {'filename' : [executable_target], 'makefile': makefile}))
+   api.make_clean_target( [executable_target], makefile)
 
    return executable_target
 
@@ -114,6 +115,6 @@ def link_server( input):
          selector.LINK_DIRECTIVES_EXE + \
          common.add_item_to_list( include_paths, '-I')
 
-   executor.execute_command( cmd, destination, context_directory)
+   executor.command( cmd, destination, context_directory)
 
 
