@@ -1,0 +1,10 @@
+import casual.make.api as make
+import casual.middleware.make.api as dsl
+
+# Install 
+make.Install( ['changelog.md'],  dsl.paths().install )
+
+
+
+
+

@@ -7,3 +7,5 @@ make.Build( casual.middleware.make.api.paths().thirdparty + '/makefile.cmk')
 
 make.Build('middleware/makefile.cmk')
 make.Build('test/makefile.cmk')
+make.Build('documentation/makefile.cmk')
+
