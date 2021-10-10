@@ -21,17 +21,8 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = u'casual'
-copyright = u'2020, casual'
+copyright = u'2021, casual'
 author = u'casualcore'
-
-# The short X.Y version
-version = os.getenv("CASUAL_VERSION")
-# The full version, including alpha/beta/rc tags
-release = os.getenv("CASUAL_RELEASE")
-
-if not version or not release:
-   raise SystemError("CASUAL_VERSION AND/OR CASUAL_RELEASE not set")
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -43,8 +34,8 @@ if not version or not release:
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "recommonmark",
-    "sphinx_markdown_tables"
+    "sphinx_multiversion",
+    "myst_parser"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -54,7 +45,6 @@ templates_path = ['_templates']
 # You can specify multiple suffix as a list of string:
 #
 source_suffix = ['.rst', '.md']
-#source_suffix = '.rst'
 
 # The master toctree document.
 master_doc = 'index'
@@ -74,8 +64,9 @@ exclude_patterns = ['**google**']
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
 
-
-
+smv_tag_whitelist = None
+smv_branch_whitelist = r'^release/[0-9]\.[0-9]+$'
+smv_remote_whitelist = None 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -83,6 +74,7 @@ pygments_style = "sphinx"
 #
 html_theme = 'sphinx_rtd_theme'
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_theme_options = { 'display_version': False}
 
 html_logo = "resources/casual.png"
 
@@ -108,7 +100,6 @@ html_use_index = True
 # default: ``['localtoc.html', 'relations.html', 'sourcelink.html',
 # 'searchbox.html']``.
 #
-# html_sidebars = {}
 
 
 # -- Options for HTMLHelp output ---------------------------------------------
