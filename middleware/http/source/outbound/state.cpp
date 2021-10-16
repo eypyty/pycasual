@@ -54,7 +54,6 @@ namespace casual
 
          Pending::Pending() : m_multi( curl::multi::create())
          {
-
          }
 
          Pending::~Pending() noexcept
@@ -96,7 +95,7 @@ namespace casual
       State::State()
       {
          inbound.m_wait.events = CURL_WAIT_POLLIN;
-         inbound.m_wait.fd = communication::ipc::inbound::handle().socket().descriptor().value();
+         inbound.m_wait.fd = communication::ipc::inbound::handle().descriptor().value();
       }
 
       void State::Metric::add( const state::pending::Request& request, common::message::service::Code code)

@@ -121,17 +121,16 @@ namespace casual
                using non_blocking_policy = ipc::outbound::Connector::non_blocking_policy;
                using complete_type = communication::ipc::message::Complete;
 
-               base_connector();
+               base_connector() = default;
 
-               inline const Socket& socket() const { return m_socket;}
+               inline auto descriptor() const noexcept { return m_connector.descriptor();}
+               inline auto& handle() const noexcept { return m_connector.handle();}
 
                inline const process::Handle& process() const { return m_process;}
-               inline const ipc::Address& destination() const { return m_connector.destination();}
 
                CASUAL_LOG_SERIALIZE(
                   CASUAL_SERIALIZE_NAME( m_process, "process");
                   CASUAL_SERIALIZE_NAME( m_connector, "connector");
-                  CASUAL_SERIALIZE_NAME( m_socket, "socket");
                )
 
             protected:
@@ -139,7 +138,6 @@ namespace casual
 
                process::Handle m_process;
                ipc::outbound::Connector m_connector;
-               Socket m_socket;
             };
 
             template< fetch::Directive directive>
@@ -147,7 +145,7 @@ namespace casual
             {
                basic_connector( instance::Identity identity);
                
-               void reconnect();
+               void connect();
 
                //! clear the connector
                void clear();
@@ -216,7 +214,7 @@ namespace casual
          {
             struct Connector : detail::base_connector
             {
-               void reconnect();
+               void connect();
                void clear();
             };
             using Device = communication::device::Outbound< Connector>;
@@ -226,7 +224,7 @@ namespace casual
             {
                struct Connector : detail::base_connector
                {
-                  void reconnect();
+                  void connect();
                   void clear();
                };
 

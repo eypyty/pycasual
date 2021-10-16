@@ -8,7 +8,6 @@
 
 #include "common/communication/ipc/message.h"
 #include "common/communication/device.h"
-#include "common/communication/socket.h"
 #include "common/communication/log.h"
 
 #include "casual/platform.h"
@@ -52,9 +51,20 @@ namespace casual
                friend std::ostream& operator << ( std::ostream& out, const Header& value);
             };
 
-            constexpr std::int64_t max_message_size() { return platform::ipc::transport::size;}
-            constexpr std::int64_t header_size() { return sizeof( Header);}
-            constexpr std::int64_t max_payload_size() { return max_message_size() - header_size();}
+            namespace header
+            {
+               constexpr std::int64_t size() { return sizeof( Header);}   
+            } // header
+
+            namespace max::size
+            {
+               constexpr std::int64_t message() { return platform::ipc::transport::size;}
+               constexpr std::int64_t payload() { return size::message() - header::size();}               
+            } // max::size
+
+            
+
+
 
          } // transport
 
@@ -62,7 +72,7 @@ namespace casual
          {
             using correlation_type = Uuid::uuid_type;
 
-            using payload_type = std::array< char, transport::max_payload_size()>;
+            using payload_type = std::array< char, transport::max::size::payload()>;
             using range_type = range::type_t< payload_type>;
             using const_range_type = range::const_type_t< payload_type>;
 
@@ -74,9 +84,9 @@ namespace casual
             } message{}; // note the {} which initialize the memory to 0:s
 
 
-            static_assert( transport::max_message_size() - transport::max_payload_size() < transport::max_payload_size(), "Payload is to small");
-            static_assert( std::is_trivially_copyable< message_t>::value, "Message has to be trivially copyable");
-            static_assert( ( transport::header_size() + transport::max_payload_size()) == transport::max_message_size(), "something is wrong with padding");
+            //static_assert( transport::max_message_size() - transport::max::size::payload() < transport::max::size::payload(), "Payload is to small");
+            //static_assert( std::is_trivially_copyable< message_t>::value, "Message has to be trivially copyable");
+            //static_assert( ( transport::header_size() + transport::max::size::payload()) == transport::max_message_size(), "something is wrong with padding");
 
 
             inline Transport() = default;
@@ -95,34 +105,28 @@ namespace casual
                return range::make( std::begin( message.payload), message.header.count);
             }
 
-            inline const auto& correlation() const { return message.header.correlation;}
-            inline auto& correlation() { return message.header.correlation;}
+            inline const auto& correlation() const noexcept { return message.header.correlation;}
+            inline auto& correlation() noexcept { return message.header.correlation;}
 
             //! @return payload size
-            inline platform::size::type payload_size() const { return message.header.count;}
+            inline platform::size::type payload_size() const noexcept { return message.header.count;}
 
             //! @return the offset of the logical complete message this transport
             //!    message represent.
-            inline platform::size::type payload_offset() const { return message.header.offset;}
+            inline platform::size::type payload_offset() const noexcept { return message.header.offset;}
 
             //! @return the size of the complete logical message
-            inline platform::size::type complete_size() const { return message.header.size;}
+            inline platform::size::type complete_size() const noexcept { return message.header.size;}
 
             //! @return the total size of the transport message including header.
-            inline platform::size::type size() const { return transport::header_size() + payload_size();}
+            inline platform::size::type size() const noexcept { return transport::header::size() + payload_size();}
 
-            inline void* data() { return static_cast< void*>( &message);}
-            inline const void* data() const { return static_cast< const void*>( &message);}
+            inline auto data() noexcept { return reinterpret_cast< char*>( &message);}
+            inline auto data() const noexcept { return reinterpret_cast< const char*>( &message);}
 
-            inline void* header_data() { return static_cast< void*>( &message.header);}
-            inline void* payload_data() { return static_cast< void*>( &message.payload);}
+            inline auto header_data() noexcept { return reinterpret_cast< char*>( &message.header);}
+            inline auto payload_data() noexcept { return reinterpret_cast< char*>( &message.payload);}
 
-
-            //! Indication if this transport message is the last of the logical message.
-            //!
-            //! @return true if this transport message is the last of the logical message.
-            //! @attention this does not give any guarantees that no more transport messages will arrive...
-            inline bool last() const { return message.header.offset + message.header.count == message.header.size;}
 
             auto begin() { return std::begin( message.payload);}
             inline auto begin() const { return std::begin( message.payload);}
@@ -133,7 +137,7 @@ namespace casual
             void assign( R&& range)
             {
                message.header.count = range.size();
-               assert( message.header.count <=  transport::max_payload_size());
+               assert( message.header.count <= transport::max::size::payload());
 
                algorithm::copy( range, std::begin( message.payload));
             }
@@ -145,101 +149,70 @@ namespace casual
 
       } // message
 
+      namespace detail
+      {
+         struct Descriptor
+         {
+            Descriptor() = default;
+            inline Descriptor( strong::file::descriptor::id descriptor)
+               : m_descriptor{ descriptor} {}
+            Descriptor( Descriptor&& other) noexcept;
+            Descriptor& operator = ( Descriptor&& other) noexcept;
+            ~Descriptor();
+
+            inline explicit operator bool () const { return predicate::boolean( m_descriptor);}
+
+            inline auto id() const noexcept { return m_descriptor;}
+
+            CASUAL_LOG_SERIALIZE( 
+               CASUAL_SERIALIZE_NAME( m_descriptor, "value");
+            );
+
+         private:
+            strong::file::descriptor::id m_descriptor;
+         };         
+      } // detail
+
+
+
 
       struct Handle
       {
+         Handle() = default;
+         inline Handle( strong::file::descriptor::id descriptor, strong::ipc::id ipc)
+            : m_descriptor( descriptor), m_ipc( std::move( ipc))
+         {}
 
-         explicit Handle( Socket&& socket, strong::ipc::id ipc);
-         Handle( Handle&& other) noexcept;
-         Handle& operator = ( Handle&& other) noexcept;
-         ~Handle();
-
-         inline const Socket& socket() const { return m_socket;}
+         inline auto descriptor() const { return m_descriptor.id();}
          inline strong::ipc::id ipc() const { return m_ipc;}
 
-         inline explicit operator bool () const { return ! m_socket.empty();}
+         inline explicit operator bool () const { return predicate::boolean( m_descriptor);}
 
          CASUAL_LOG_SERIALIZE(
-            CASUAL_SERIALIZE_NAME( m_socket, "socket");
+            CASUAL_SERIALIZE_NAME( m_descriptor, "descriptor");
             CASUAL_SERIALIZE_NAME( m_ipc, "ipc");
          )
 
       private:
-         Socket m_socket;
+         detail::Descriptor m_descriptor;
          strong::ipc::id m_ipc;
       };
 
-      static_assert( sizeof( Handle) == sizeof( Socket) + sizeof( strong::ipc::id), "padding problem");
+      static_assert( sizeof( Handle) == sizeof( strong::file::descriptor::id) + sizeof( strong::ipc::id), "padding problem");
 
-      struct Address
-      {
-         Address() = default;
-         explicit Address( strong::ipc::id id);
 
-         inline const ::sockaddr_un& native() const noexcept { return m_native;}
 
-         inline const ::sockaddr* native_pointer() const noexcept { return reinterpret_cast< const ::sockaddr*>( &m_native);}
-         inline auto native_size() const noexcept { return sizeof( m_native);}
-
-         friend std::ostream& operator << ( std::ostream& out, const Address& rhs);
-
-      private:
-         ::sockaddr_un m_native = {};
-      };
-
-      namespace native
-      {
-         namespace detail
-         {
-            namespace create
-            {
-               namespace domain
-               {
-                  Socket socket();
-               } // domain
-            } // create
-            namespace outbound
-            {
-               const Socket& socket();
-            } // outbound
-         } // detail
-
-         enum class Flag : int
-         {
-            none = 0,
-            non_blocking = platform::flag::value( platform::flag::tcp::no_wait)
-         };
-
-         bool send( const Socket& socket, const Address& destination, const message::Transport& transport, Flag flag);
-         bool receive( const Handle& handle, message::Transport& transport, Flag flag);
-
-         namespace blocking
-         {
-            bool send( const Socket& socket, const Address& destination, const message::Transport& transport);
-            bool receive( const Handle& handle, message::Transport& transport);
-         } // blocking
-
-         namespace non
-         {
-            namespace blocking
-            {
-               bool send( const Socket& socket, const Address& destination, const message::Transport& transport);
-               bool receive( const Handle& handle, message::Transport& transport);
-            } // blocking
-         } // non
-      } // native
-
+   
 
       namespace policy
       {
-         using complete_type = message::Complete;
-         using cache_type = std::vector< complete_type>;
+         using cache_type = std::vector< message::Complete>;
          using cache_range_type = range::type_t< cache_type>;
 
          namespace blocking
          {
-            cache_range_type receive( Handle& handle, cache_type& cache);
-            strong::correlation::id send( const Socket& socket, const Address& destination, const complete_type& complete);
+            cache_range_type receive( const Handle& handle, cache_type& cache);
+            strong::correlation::id send( const Handle& destination, const message::Complete& complete);
          } // blocking
 
 
@@ -253,9 +226,9 @@ namespace casual
             }
 
             template< typename Connector>
-            auto send( Connector&& connector, const complete_type& complete)
+            auto send( Connector&& connector, const message::Complete& complete)
             {
-               return policy::blocking::send( connector.socket(), connector.destination(), complete);
+               return policy::blocking::send( connector.handle(), complete);
             }
          };
 
@@ -263,8 +236,8 @@ namespace casual
          {
             namespace blocking
             {
-               cache_range_type receive( Handle& handle, cache_type& cache);
-               strong::correlation::id send( const Socket& socket, const Address& destination, const complete_type& complete);
+               cache_range_type receive( const Handle& handle, cache_type& cache);
+               strong::correlation::id send( const Handle& destination, const message::Complete& complete);
             } // blocking
 
             struct Blocking
@@ -276,9 +249,9 @@ namespace casual
                }
 
                template< typename Connector>
-               auto send( Connector&& connector, const complete_type& complete)
+               auto send( Connector&& connector, const message::Complete& complete)
                {
-                  return policy::non::blocking::send( connector.socket(), connector.destination(), complete);
+                  return policy::non::blocking::send( connector.handle(), complete);
                }
             };
 
@@ -296,16 +269,11 @@ namespace casual
             using non_blocking_policy = policy::non::Blocking;
             using cache_type = policy::cache_type;
 
-
             Connector();
             ~Connector();
 
-            Connector( Connector&&) noexcept = default;
-            Connector& operator = ( Connector&&) noexcept = default;
-
             inline const Handle& handle() const { return m_handle;}
-            inline Handle& handle() { return m_handle;}
-            inline auto descriptor() const { return m_handle.socket().descriptor();}
+            inline auto descriptor() const { return m_handle.descriptor();}
 
             CASUAL_LOG_SERIALIZE(
                CASUAL_SERIALIZE_NAME( m_handle, "handle");
@@ -313,13 +281,14 @@ namespace casual
 
          private:
             Handle m_handle;
+            detail::Descriptor m_writer;
          };
 
          using Device = device::Inbound< Connector>;
 
 
          Device& device();
-         inline Handle& handle() { return device().connector().handle();}
+         inline const Handle& handle() { return device().connector().handle();}
          inline strong::ipc::id ipc() { return device().connector().handle().ipc();}
 
       } // inbound
@@ -329,28 +298,27 @@ namespace casual
 
          struct Connector
          {
+            using complete_type = message::Complete;
             using transport_type = message::Transport;
             using blocking_policy = policy::Blocking;
             using non_blocking_policy = policy::non::Blocking;
-            using complete_type = policy::complete_type;
 
             Connector() = default;
             Connector( strong::ipc::id destination);
-            ~Connector() = default;
+            
 
-            inline const Address& destination() const { return m_destination;}
-            inline const Socket& socket() const { return native::detail::outbound::socket();}
+            inline const Handle& handle() const { return m_handle;}
+            inline auto descriptor() const { return m_handle.descriptor();}
 
             inline void reconnect() const { throw; }
-            inline void clear() { m_destination = Address{ strong::ipc::id{}};}
 
-            inline friend std::ostream& operator << ( std::ostream& out, const Connector& rhs) 
-            { 
-               return out << "{ destination: " << rhs.m_destination << '}'; 
-            }
+            CASUAL_LOG_SERIALIZE(
+               CASUAL_SERIALIZE_NAME( m_handle, "handle");
+            )
 
          protected:
-            Address m_destination;
+            Handle m_handle;
+            detail::Descriptor m_writer;
          };
 
          template< typename S>

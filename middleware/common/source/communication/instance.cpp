@@ -211,9 +211,6 @@ namespace casual
                } // <unnamed>
             } // local
 
-            base_connector::base_connector()
-               : m_socket{ ipc::native::detail::create::domain::socket()}
-            {}
 
             void base_connector::reset( process::Handle process)
             {
@@ -231,9 +228,9 @@ namespace casual
 
 
             template< fetch::Directive directive>
-            void basic_connector< directive>::reconnect()
+            void basic_connector< directive>::connect()
             {
-               Trace trace{ "communication::instance::outbound::Connector::reconnect"};
+               Trace trace{ "communication::instance::outbound::Connector::connect"};
 
                reset( local::fetch( m_identity, directive));
 
@@ -249,7 +246,7 @@ namespace casual
                Trace trace{ "communication::instance::outbound::Connector::clear"};
 
                environment::variable::unset( m_identity.environment);
-               m_connector.clear();
+               m_connector = {};
             }
 
             template struct basic_connector< fetch::Directive::direct>;
@@ -384,9 +381,9 @@ namespace casual
                } // local
 
 
-               void Connector::reconnect()
+               void Connector::connect()
                {
-                  Trace trace{ "communication::instance::outbound::domain::manager::Connector::reconnect"};
+                  Trace trace{ "communication::instance::outbound::domain::manager::Connector::connect"};
 
                   reset( local::connect( [](){ return common::domain::singleton::read().process;}));
 
@@ -397,7 +394,7 @@ namespace casual
                {
                   Trace trace{ "communication::instance::outbound::domain::manager::Connector::clear"};
                   environment::variable::unset( environment::variable::name::ipc::domain::manager);
-                  m_connector.clear();
+                  m_connector = {};
                   m_process = {};
                }
 
@@ -410,9 +407,9 @@ namespace casual
 
                namespace optional
                {
-                  void Connector::reconnect()
+                  void Connector::connect()
                   {
-                     Trace trace{ "communication::instance::outbound::domain::manager::optional::Connector::reconnect"};
+                     Trace trace{ "communication::instance::outbound::domain::manager::optional::Connector::connect"};
 
                      reset( local::connect( [](){
                         return common::domain::singleton::read().process;
@@ -425,7 +422,7 @@ namespace casual
                   {
                      Trace trace{ "communication::instance::outbound::domain::manager::optional::Connector::clear"};
                      environment::variable::unset( environment::variable::name::ipc::domain::manager);
-                     m_connector.clear();
+                     m_connector = {};
                      m_process = {};
                   }
 

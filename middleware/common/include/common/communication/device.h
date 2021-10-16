@@ -466,15 +466,15 @@ namespace casual
       private:
 
          template< typename C>
-         static void reconnect( C& connector, traits::priority::tag< 0>)
+         static void connect( C& connector, traits::priority::tag< 0>)
          {
             throw;
          }
          template< typename C>
-         static auto reconnect( C& connector, traits::priority::tag< 1>)
-            -> decltype( void( connector.reconnect()), void())
+         static auto connect( C& connector, traits::priority::tag< 1>)
+            -> decltype( void( connector.connect()), void())
          {
-            connector.reconnect();
+            connector.connect();
          }
 
          template< typename Policy, typename C>
@@ -493,7 +493,7 @@ namespace casual
                   if( error.code() == code::casual::communication_unavailable || error.code() == code::casual::invalid_argument)
                   {
                      // Let connector take a crack at resolving this problem, if implemented...
-                     reconnect( Base::connector(), traits::priority::tag< 1>{});
+                     connect( Base::connector(), traits::priority::tag< 1>{});
                   }
                   else if( error.code() == code::casual::interupted)
                      signal::dispatch();

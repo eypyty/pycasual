@@ -63,8 +63,12 @@ namespace casual
                      case std::errc::protocol_error:              return code::casual::communication_protocol;
                      case std::errc::address_in_use:              return code::casual::communication_address_in_use;
                      case std::errc::address_not_available:       return code::casual::communication_refused;
-                     case std::errc::connection_reset:            return code::casual::communication_unavailable;
-                     case std::errc::broken_pipe:                 return code::casual::communication_unavailable;
+                     
+                     case std::errc::connection_reset:
+                     case std::errc::broken_pipe: 
+                     case std::errc::no_such_device:
+                     case std::errc::no_such_device_or_address:
+                        return code::casual::communication_unavailable;
                      
                      case std::errc::no_such_process: return code::casual::domain_instance_unavailable;
                      

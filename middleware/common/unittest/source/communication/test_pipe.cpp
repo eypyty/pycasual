@@ -117,7 +117,7 @@ namespace casual
             pipe::inbound::Device device;
             auto address = pipe::Address::create();
 
-            const auto data = unittest::random::binary( pipe::message::transport::max_payload_size() * 10);
+            const auto data = unittest::random::binary( pipe::message::transport::max::size::payload() * 10);
 
             // send
             {
@@ -177,7 +177,7 @@ namespace casual
             auto address = pipe::Address::create();
 
             Uuid correlation;
-            const auto data = unittest::random::binary( pipe::message::transport::max_payload_size() * 10);
+            const auto data = unittest::random::binary( pipe::message::transport::max::size::payload() * 10);
             auto count = 10;
 
             // send
@@ -273,7 +273,7 @@ namespace casual
 
             pipe::inbound::Device device;
             auto address = pipe::Address::create();
-            const auto data = unittest::random::binary( pipe::message::transport::max_payload_size() * 10);
+            const auto data = unittest::random::binary( pipe::message::transport::max::size::payload() * 10);
 
             const auto callers = 10;
             const auto messages = 10;

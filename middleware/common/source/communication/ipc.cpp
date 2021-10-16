@@ -23,15 +23,20 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/uio.h>
 
 #include <utility>
 
+
+std::ostream& operator << ( std::ostream& out, const ::iovec& value)
+{
+   return out << "{ iov_len: " << value.iov_len << '}';
+}
 
 namespace casual
 {
    namespace common::communication::ipc
    {
-
       namespace message
       {
          namespace transport
@@ -43,7 +48,7 @@ namespace casual
                return stream::write( out, ", offset: ", value.offset, ", count: ", value.count, ", size: ", value.size, '}');
             }
             
-            static_assert( max_message_size() <= platform::ipc::transport::size, "ipc message is too big'");
+            static_assert( max::size::message() == platform::ipc::transport::size, "ipc message is too big'");
          } // transport
          
 
@@ -52,73 +57,62 @@ namespace casual
             return stream::write( out, 
                "{ header: " , value.message.header
                , ", payload.size: " , value.payload_size()
-               , ", header-size: " , transport::header_size()
+               , ", header-size: " , transport::header::size()
                , ", transport-size: " ,  value.size()
-               , ", max-size: " , transport::max_message_size() 
+               , ", max-size: " , transport::max::size::message() 
                , '}');
          }
       } // message
 
-      Handle::Handle( Socket&& socket, strong::ipc::id ipc) : m_socket( std::move( socket)), m_ipc(std::move( ipc))
-      {
-         log::line( communication::verbose::log, "created handle: ", *this);
-      }
-
-      Handle::Handle( Handle&& other) noexcept 
-         : m_socket( std::exchange( other.m_socket, {})), 
-            m_ipc( std::exchange( other.m_ipc, {}))
+      namespace detail
       {
 
-      }
+         Descriptor::Descriptor( Descriptor&& other) noexcept 
+            : m_descriptor( std::exchange( other.m_descriptor, {}))
+         {}
 
-      Handle& Handle::operator = ( Handle&& other) noexcept
-      {
-         std::swap( m_socket, other.m_socket);
-         std::swap( m_ipc, other.m_ipc);
-         return *this;
-      }
-
-      Handle::~Handle() = default;
-
-
-      Address::Address( strong::ipc::id ipc)
-      {
-         const auto path = ( environment::directory::ipc() / uuid::string( ipc.value())).string();
-
-         if( path.size() > ( sizeof( m_native.sun_path) - 1))
-            code::raise::error( code::casual::invalid_path, "transient directory path too long");
-
-         auto target = std::begin( m_native.sun_path);
-
-         algorithm::copy( path, target);
-
-         m_native.sun_family = AF_UNIX;
-      }
-
-      std::ostream& operator << ( std::ostream& out, const Address& rhs)
-      {
-         return out << "{ path: " << rhs.m_native.sun_path << '}';
-      }
-
-      namespace native
-      {
-         namespace local
+         Descriptor& Descriptor::operator = ( Descriptor&& other) noexcept
          {
-            namespace
-            {
-               bool check_error( std::errc code)
+            std::swap( m_descriptor, other.m_descriptor);
+            return *this;
+         }
+
+         Descriptor::~Descriptor()
+         {
+            if( *this)
+               exception::guard( [&]()
                {
+                  log::line( communication::verbose::log, "remove descriptor: ", *this);
+
+                  auto scope = signal::thread::scope::Block{};
+
+                  posix::result( ::close( m_descriptor.value()), "close descriptor: ", *this);
+
+               });
+         }         
+      } // detail
+
+
+      namespace local
+      {
+         namespace
+         {
+            namespace ipc
+            {
+               auto path( const strong::ipc::id& id)
+               {
+                  return environment::directory::ipc() / uuid::string( id.value());
+               }
+            } // ipc
+
+            namespace check
+            {            
+               bool error( std::errc code)
+               {
+                  log::line( verbose::log, "check error - code: ", code);
+
                   switch( code)
                   {
-
-#ifdef __APPLE__
-                     case std::errc::no_buffer_space:
-                     {
-                        // try again...
-                        std::this_thread::sleep_for( std::chrono::microseconds{ 100});
-                        return false;
-                     }
-#endif
                      case std::errc::resource_unavailable_try_again:
                         return false;
 
@@ -130,7 +124,11 @@ namespace casual
                      case std::errc::invalid_argument:
                         code::raise::error( code::casual::invalid_argument);
 
+                     case std::errc::broken_pipe:
+                     case std::errc::bad_file_descriptor:
                      case std::errc::no_such_file_or_directory:
+                     case std::errc::no_such_device:
+                     case std::errc::no_such_device_or_address:
                         code::raise::error( code::casual::communication_unavailable);
 
                      default:
@@ -139,223 +137,228 @@ namespace casual
                   }
                }
 
-               bool check_error()
+               bool error()
                {
-                  return check_error( code::system::last::error());
+                  return check::error( code::system::last::error());
                } 
-            } // <unnamed>
-         } // local
-         namespace detail
-         {
-            namespace create
+            } // check
+
+            namespace file::descriptor::option
             {
-               namespace domain
+               enum struct Flag : int
                {
-                  Socket socket()
+                  no_block = O_NONBLOCK,
+               };
+
+               namespace detail
+               {
+                  template< typename Op>
+                  void modify( strong::file::descriptor::id descriptor, Flag flag, Op predicate)
                   {
-                     auto result = Socket{ strong::socket::id{ posix::result( ::socket(AF_UNIX, SOCK_DGRAM, 0))}};
-                     result.set( socket::option::File::close_in_child);
-                     return result;
+                     auto flags = ::fcntl( descriptor.value(), F_GETFL);
+                     if( ::fcntl( descriptor.value(), F_SETFL, predicate( flags, cast::underlying( flag))) == -1)
+                        check::error();
                   }
-               } // domain
-            } // create
+               } // detail
 
-            namespace outbound
-            {
-               const Socket& socket()
+               void set( strong::file::descriptor::id descriptor, Flag flag)
                {
-                  static const Socket singleton = create::domain::socket();
-                  return singleton;
+                  detail::modify( descriptor, flag, []( auto flags, auto flag){ return flags | flag;});
                }
-            } // outbound
-         } // detail
 
-         namespace blocking
-         {
-            bool send( const Socket& socket, const Address& destination, const message::Transport& transport)
-            {
-               Trace trace{ "common::communication::ipc::native::blocking::send"};
-
-               // The loop is "only" for BSD/OS X crap handling
-               while( true)
+               void unset( strong::file::descriptor::id descriptor, Flag flag)
                {
-                  auto error = posix::error(
-                     ::sendto(
-                        socket.descriptor().value(), 
-                        transport.data(), 
-                        transport.size(),
-                        0, //| cast::underlying( platform::flag::msg::no_signal), 
-                        destination.native_pointer(),
-                        destination.native_size())
-                  );
-
-                  if( ! error)
-                  {
-                     log::line( verbose::log, "ipc ---> blocking send - socket: ", socket, ", destination: ", destination, ", transport: ", transport);
-                     return true;
-                  }
-
-                  local::check_error( std::errc{ error.value()});
-                  log::line( verbose::log, "ipc ---> blocking send - error: ", error, ", destination: ", destination);
-
+                  detail::modify( descriptor, flag, []( auto flags, auto flag){ return flags & ~flag;});
                }
-            }
-
-            bool receive( const Handle& handle, message::Transport& transport)
-            {
-               Trace trace{ "common::communication::ipc::native::blocking::receive"};
-
-               // first we try non-blocking
-               if( non::blocking::receive( handle, transport))
-                  return true;
-
-               select::block::read( handle.socket().descriptor());
-
-               auto result = ::recv(
-                  handle.socket().descriptor().value(),
-                  transport.data(),
-                  message::transport::max_message_size(),
-                  0); // | cast::underlying( platform::flag::msg::no_signal));
-
-               if( result == -1)
-                  return local::check_error();
-
-               log::line( verbose::log, "ipc <--- blocking receive - handle: ", handle, ", transport: ", transport);
-               assert( result == transport.size());
-
-               return true;                     
-            }
+            } // file::descriptor::option
             
-         } // blocking
-
-         namespace non
-         {
-            namespace blocking
+            namespace transport
             {
-
-               bool send( const Socket& socket, const Address& destination, const message::Transport& transport)
+               struct Message
                {
-                  Trace trace{ "common::communication::ipc::native::non::blocking::send"};
+                  Message( const message::Complete& complete)
+                  {
+                     header.type = complete.type();
+                     header.size = complete.size();
+                     complete.correlation().value().copy( header.correlation);
 
-                  auto error = posix::error(
-                     ::sendto(
-                        socket.descriptor().value(), 
-                        transport.data(), 
-                        transport.size(),
-                        cast::underlying( Flag::non_blocking), //| cast::underlying( platform::flag::msg::no_signal), 
-                        destination.native_pointer(),
-                        destination.native_size())
-                  );
+                     io[ 0].iov_base = &header;
+                     io[ 0].iov_len = message::transport::header::size();
+                  }
 
-                  if( error)
-                     return local::check_error( std::errc{ error.value()});
+                  //! sets the next chunk
+                  //! @returns the new offset 
+                  template< typename T>
+                  platform::size::type next( T& payload, platform::size::type offset) noexcept
+                  {
+                     io[ 1].iov_base = const_cast< char*>( payload.data()) + offset;
+                     header.offset = offset;
 
-                  log::line( verbose::log, "ipc ---> non blocking send - socket: ", socket, ", destination: ", destination, ", transport: ", transport);
-                  return true;
-               }
+                     auto size = range::size( payload) - offset;
 
-               bool receive( const Handle& handle, message::Transport& transport)
+                     if( size <= message::transport::max::size::payload())
+                     {   
+                        io[ 1].iov_len = size;
+                        header.count = size;
+                        return offset + size;
+                     }
+
+                     io[ 1].iov_len = message::transport::max::size::payload();
+                     header.count = message::transport::max::size::payload();
+                     return offset + message::transport::max::size::payload();
+                  }
+
+                  inline platform::size::type size() const noexcept { return io[ 0].iov_len + io[ 1].iov_len;}
+
+                  CASUAL_LOG_SERIALIZE(
+                     CASUAL_SERIALIZE( header);
+                     CASUAL_SERIALIZE( io);
+                  )
+
+                  std::array< ::iovec, 2> io{};   
+                  message::transport::Header header{};
+               };
+
+               bool send( const Handle& handle, const Message& transport)
                {
-                  Trace trace{ "common::communication::ipc::native::non::blocking::receive"};
+                  Trace trace{ "common::communication::ipc::local::transport::send"};
 
-                  auto result = ::recv(
-                     handle.socket().descriptor().value(),
-                     transport.data(),
-                     message::transport::max_message_size(),
-                     cast::underlying( Flag::non_blocking)); // | cast::underlying( platform::flag::msg::no_signal));
+                  auto result = ::writev( handle.descriptor().value(), transport.io.data(), transport.io.size());
+                  
+                  if( result == 0)
+                     return false;
 
                   if( result == -1)
-                     return local::check_error();
-
-                  log::line( verbose::log, "ipc <--- non blocking receive - handle: ", handle, ", transport: ", transport);
+                     return check::error();
+                  
+                  log::line( verbose::log, "ipc ---> send - handle: ", handle, ", transport: ", transport);
 
                   assert( result == transport.size());
 
                   return true;
                }
-            } // blocking
-         } // non
 
-         bool send( const Socket& socket, const Address& destination, const message::Transport& transport, Flag flag)
-         {
-            if( flag == Flag::non_blocking) 
-               return non::blocking::send( socket, destination, transport);
-            else
-               return blocking::send( socket, destination, transport);
-         }
 
-         bool receive( const Handle& handle, message::Transport& transport, Flag flag)
-         {
-            if( flag == Flag::non_blocking) 
-               return non::blocking::receive( handle, transport);
-            else
-               return blocking::receive( handle, transport);
-         }
-      } // native
+               bool receive( const Handle& handle, message::Transport& transport)
+               {
+                  Trace trace{ "common::communication::ipc::local::transport::receive"};
+
+                  auto descriptor = handle.descriptor();
+
+                  auto read = []( auto descriptor, auto first, auto last)
+                  {
+                     auto result = ::read( descriptor.value(), first, last - first);
+                     
+                     if( result == -1 && ! check::error())
+                        return first;
+
+                     return first + result;
+                  };
+
+                  // read the header
+                  {
+                     auto first = transport.header_data();
+                     const auto last = first + message::transport::header::size();
+                     first = read( descriptor, first, last);
+
+                     if( first == transport.header_data())
+                        return false;
+
+                     while( first != last)
+                        first = read( descriptor, first, last);
+                  }
+
+                  // read the payload
+                  {
+                     auto first = transport.payload_data();
+                     const auto last = first + transport.payload_size();
+                     
+                     while( first != last)
+                        first = read( descriptor, first, last);
+                  }
+
+                  log::line( verbose::log, "ipc <--- receive - handle: ", handle, ", transport: ", transport);
+
+                  return true;
+               }
+
+
+            } // transport
+
+
+            bool send( const Handle& handle, const message::Complete& complete)
+            {
+               local::transport::Message transport{ complete};
+               platform::size::type offset{};
+
+               do
+               {
+                  offset = transport.next( complete.payload, offset);
+                  if( ! transport::send( handle, transport))
+                     return false;
+               } 
+               while( offset != complete.size());
+
+               return true;
+            }
+
+
+
+            policy::cache_range_type receive( const Handle& handle, policy::cache_type& cache)
+            {
+               Trace trace{ "common::communication::ipc::local::receive"};
+               message::Transport transport;
+
+               if( ! transport::receive( handle, transport))
+                  return {};
+
+               auto is_complete = [&correlation = transport.correlation()]( auto& complete)
+               {
+                  return ! complete.complete() && correlation == complete.correlation();
+               };
+
+               if( auto found = algorithm::find_if( cache, is_complete))
+               {
+                  found->add( transport);
+                  return found;
+               }
+
+               cache.emplace_back( transport);
+               return range::make( std::prev( std::end( cache)), 1);
+            }
+
+            
+         } // <unnamed>
+      } // local
 
 
       namespace policy
       {
          namespace blocking
          {
-            cache_range_type receive( Handle& handle, cache_type& cache)
+            cache_range_type receive( const Handle& handle, cache_type& cache)
             {
-               message::Transport transport;
+               Trace trace{ "common::communication::ipc::policy::blocking::receive"};
+               local::file::descriptor::option::unset( handle.descriptor(), local::file::descriptor::option::Flag::no_block);
 
-               if( native::blocking::receive( handle, transport))
-               {
-                  auto found = algorithm::find_if( cache,
-                        [&]( auto& complete)
-                        {
-                           return ! complete.complete() 
-                              && transport.type() == complete.type()
-                              && transport.message.header.correlation == complete.correlation();
-                        });
+               // make sure there something to read and manage signal race conditions
+               select::block::read( handle.descriptor());
 
-                  if( found)
-                  {
-                     found->add( transport);
-                     return found;
-                  }
-                  else
-                  {
-                     cache.emplace_back(
-                           transport.type(),
-                           strong::correlation::id{ common::Uuid{ transport.correlation()}},
-                           transport.complete_size(),
-                           transport);
-
-                     return cache_range_type{ std::end( cache) - 1, std::end( cache)};
-                  }
-               }
-               return cache_range_type{};
+               return local::receive( handle, cache);
             }
 
-            strong::correlation::id send( const Socket& socket, const Address& destination, const ipc::message::Complete& complete)
+            strong::correlation::id send( const Handle& handle, const message::Complete& complete)
             {
-               message::Transport transport{ complete.type(), complete.size()};
+               Trace trace{ "common::communication::ipc::policy::blocking::send"};
+               local::file::descriptor::option::unset( handle.descriptor(), local::file::descriptor::option::Flag::no_block);
 
-               complete.correlation().value().copy( transport.correlation());
+               // make sure there is room to write and manage signal race conditions
+               select::block::write( handle.descriptor());
 
-               auto part_begin = std::begin( complete.payload);
-
-               do
-               {
-                  auto part_end = std::distance( part_begin, std::end( complete.payload)) > message::transport::max_payload_size() ?
-                        part_begin + message::transport::max_payload_size() : std::end( complete.payload);
-
-                  transport.assign( range::make( part_begin, part_end));
-                  transport.message.header.offset = std::distance( std::begin( complete.payload), part_begin);
-
-                  // send the physical message
-                  if( ! native::blocking::send( socket, destination, transport))
-                     return {};
-
-                  part_begin = part_end;
-               }
-               while( part_begin != std::end( complete.payload));
-
-               return complete.correlation();
+               if( local::send( handle, complete))
+                  return complete.correlation();
+               
+               return {};
             }
 
          } // blocking
@@ -364,64 +367,23 @@ namespace casual
          {
             namespace blocking
             {
-               cache_range_type receive( Handle& handle, cache_type& cache)
+               cache_range_type receive( const Handle& handle, cache_type& cache)
                {
-                  message::Transport transport;
+                  Trace trace{ "common::communication::ipc::policy::non::blocking::receive"};
+                  local::file::descriptor::option::set( handle.descriptor(), local::file::descriptor::option::Flag::no_block);
 
-                  if( native::non::blocking::receive( handle, transport))
-                  {
-                     auto found = algorithm::find_if( cache,
-                           [&]( auto& complete)
-                           {
-                              return ! complete.complete()
-                                 && transport.type() == complete.type()
-                                 && transport.message.header.correlation == complete.correlation();
-                           });
-
-                     if( found)
-                     {
-                        found->add( transport);
-                        return found;
-                     }
-                     else
-                     {
-                        cache.emplace_back(
-                              transport.type(),
-                              strong::correlation::id{ common::Uuid{ transport.correlation()}},
-                              transport.complete_size(),
-                              transport);
-
-                        return cache_range_type{ std::end( cache) - 1, std::end( cache)};
-                     }
-                  }
-                  return cache_range_type{};
+                  return local::receive( handle, cache);
                }
 
-               strong::correlation::id send( const Socket& socket, const Address& destination, const ipc::message::Complete& complete)
+               strong::correlation::id send( const Handle& destination, const message::Complete& complete)
                {
-                  message::Transport transport{ complete.type(), complete.size()};
+                  Trace trace{ "common::communication::ipc::policy::non::blocking::send"};
+                  local::file::descriptor::option::set( destination.descriptor(), local::file::descriptor::option::Flag::no_block);
 
-                  complete.correlation().value().copy( transport.correlation());
-
-                  auto part_begin = std::begin( complete.payload);
-
-                  do
-                  {
-                     auto part_end = std::distance( part_begin, std::end( complete.payload)) > message::transport::max_payload_size() ?
-                           part_begin + message::transport::max_payload_size() : std::end( complete.payload);
-
-                     transport.assign( range::make( part_begin, part_end));
-                     transport.message.header.offset = std::distance( std::begin( complete.payload), part_begin);
-
-                     // send the physical message
-                     if( ! native::non::blocking::send( socket, destination, transport))
-                        return {};
-
-                     part_begin = part_end;
-                  }
-                  while( part_begin != std::end( complete.payload));
-
-                  return complete.correlation();
+                  if( local::send( destination, complete))
+                     return complete.correlation();
+                  
+                  return {};
                }
             } // blocking
          } // non
@@ -437,41 +399,41 @@ namespace casual
             {
                namespace create
                {
-                  Handle handle()
+                  auto fifo()
                   {
-                     auto socket = native::detail::create::domain::socket();
-
                      strong::ipc::id ipc{ uuid::make()};
 
-                     Address address{ ipc};
+                     auto file = ipc::local::ipc::path( ipc).string();
 
-                     posix::result( ::bind(
-                        socket.descriptor().value(),
-                        address.native_pointer(),
-                        address.native_size()
-                     ));
+                     posix::result( ::mkfifo( file.data(), S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP), "create::fifo - file: ", file);
 
-                     return Handle{ std::move( socket), ipc};
+                     log::line( verbose::log, "FIFO created - ", file);
+
+                     auto descriptor = posix::result( ::open( file.data(), O_RDONLY | O_NONBLOCK | O_CLOEXEC), "::open fifo: ", file);
+
+                     return Handle{ strong::file::descriptor::id{ descriptor}, ipc};
                   }
+
+                  namespace dummy
+                  {
+                     auto writer( strong::ipc::id ipc)
+                     {
+                        auto file = ipc::local::ipc::path( ipc).string();
+                        return strong::file::descriptor::id{ posix::result( ::open( file.data(), O_WRONLY | O_CLOEXEC), "::open dummy-writer - file: ", file)};
+                     }
+                  } // dummy
                } // create
             } // <unnamed>
          } // local
 
-         Connector::Connector() 
-            : m_handle{ local::create::handle()}
-
-         {
-         }
+         Connector::Connector()
+            : m_handle{ local::create::fifo()}, m_writer{ local::create::dummy::writer( m_handle.ipc())}
+         {}
 
          Connector::~Connector()
          {
             if( m_handle)
-            {
-               exception::guard( [&]()
-               {
-                  ipc::remove( m_handle.ipc());
-               });
-            }
+               exception::guard( [&]() { ipc::remove( m_handle.ipc());});
          }
 
 
@@ -485,8 +447,27 @@ namespace casual
 
       namespace outbound
       {
+         namespace local
+         {
+            namespace
+            {
+               namespace open
+               {
+                  auto fifo( strong::ipc::id ipc)
+                  {
+                     auto file = ipc::local::ipc::path( ipc).string();
+                     // we don't check if open succeeded, we let the later "send" take care of errors
+                     auto descriptor = strong::file::descriptor::id{ ::open( file.data(), O_WRONLY | O_CLOEXEC)};
+
+                     return Handle{ descriptor, ipc};
+                  }
+
+               } // open
+            } // <unnamed>
+         } // local
+         
          Connector::Connector( strong::ipc::id ipc) 
-            : m_destination{ ipc}
+            : m_handle{ local::open::fifo( ipc)}
          {
          }
 
@@ -495,15 +476,13 @@ namespace casual
 
       bool exists( strong::ipc::id id)
       {
-         const Address address{ id};
-         return ::access( address.native().sun_path, F_OK) != -1; 
+         return std::filesystem::exists( local::ipc::path( id));
       }
 
 
       bool remove( strong::ipc::id id)
       {
-         Address address{ id};
-         return ::unlink( address.native().sun_path) != -1;
+         return std::filesystem::remove( local::ipc::path( id));
       }
 
       bool remove( const process::Handle& owner)
