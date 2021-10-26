@@ -8,9 +8,9 @@ then
 
         if echo $repo_root | grep ^/ > /dev/null
         then
-            echo -n $repo_root/..
+            echo -n $repo_root
         else
-            echo -n $working_dir/$repo_root/..
+            echo -n $working_dir/$repo_root
         fi
     }
 fi
@@ -47,7 +47,7 @@ total_version()
 
 execute()
 {
-    local SOURCE_ROOT="$( realpath $1)"
+    local SOURCE_ROOT="$( dirname $( realpath $1))"
     echo "SOURCE_ROOT="$SOURCE_ROOT
     export CASUAL_REPOSITORY_ROOT=${SOURCE_ROOT}/casual
     export CASUAL_TOOLS_HOME=$CASUAL_REPOSITORY_ROOT
