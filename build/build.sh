@@ -3,16 +3,17 @@
 SCRIPT_PATH=$( dirname $0)
 . $SCRIPT_PATH/build_common.sh
 
-if (( $# < 4 ))
+if (( $# < 5 ))
 then
    usage
    exit -1
 fi
 
-export CASUAL_VERSION="$1"
-export CASUAL_RELEASE="$2"
-export BRANCH="$3"
-export BUILD_TYPE="$4"
+export SOURCE_ROOT="$1"
+export CASUAL_VERSION="$2"
+export CASUAL_RELEASE="$3"
+export BRANCH="$4"
+export BUILD_TYPE="$5"
 
 
 # OSX or LINUX
@@ -24,17 +25,20 @@ then
 
     case "$ID" in
         centos)
-            echo "centos"
-            DISTRIBUTION="centos"
+            source ${SCRIPT_PATH}/build_centos.sh
             ;;
         opensuse)
-            echo "opensuse"
-            DISTRIBUTION="opensuse"
+            source ${SCRIPT_PATH}/build_suse.sh
             ;;
+        ubuntu)
+            echo "ubuntu"
+            source ${SCRIPT_PATH}/build_ubuntu.sh
+            ;;
+
     esac
 
 else
-    DISTRIBUTION="darwin"
+    source ${SCRIPT_PATH}/build_osx.sh
 fi
 
 export CASUAL_MAKE_BUILD_VERSION=$( total_version )
@@ -46,16 +50,4 @@ echo "DISTRIBUTION="${DISTRIBUTION}
 echo "CASUAL_MAKE_BUILD_VERSION="${CASUAL_MAKE_BUILD_VERSION}
 echo "BUILD_TYPE="${BUILD_TYPE}
 
-
-performCoverageMeasuring()
-{
-   echo "Perform no coverage measuring"
-   # cd /git/casual && \
-   # mkdir -p /git/casual/coverage && \
-   # gcovr -r . --html --html-details --gcov-exclude='.*thirdparty.*|.*test_.*' -o coverage/index.html
-}
-
-#source scl_source enable devtoolset-9
-
-
-execute /Users/hbergk/repo
+execute ${SOURCE_ROOT}

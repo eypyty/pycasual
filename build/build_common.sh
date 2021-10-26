@@ -1,7 +1,23 @@
 
+if ! type realpath > /dev/null 2>&1
+then
+    realpath()
+    {
+        local repo_root="$1"
+        local working_dir=$(pwd)
+
+        if echo $repo_root | grep ^/ > /dev/null
+        then
+            echo -n $repo_root/..
+        else
+            echo -n $working_dir/$repo_root/..
+        fi
+    }
+fi
+
 usage()
 {
-    echo "usage: $0 version release branch build_type"
+    echo "usage: $0 source_root version release branch build_type"
 }
 
 isRelease()
@@ -31,7 +47,8 @@ total_version()
 
 execute()
 {
-    local SOURCE_ROOT="$1"
+    local SOURCE_ROOT="$( realpath $1)"
+    echo "SOURCE_ROOT="$SOURCE_ROOT
     export CASUAL_REPOSITORY_ROOT=${SOURCE_ROOT}/casual
     export CASUAL_TOOLS_HOME=$CASUAL_REPOSITORY_ROOT
     export CASUAL_MAKE_HOME=$CASUAL_REPOSITORY_ROOT/../casual-make/source
@@ -51,7 +68,7 @@ execute()
         find $CASUAL_REPOSITORY_ROOT -name "report.xml" -print | xargs rm > /dev/null
     fi
 
-    rm -rf $CASUAL_REPOSITORY_ROOT/middleware/.casual/unittest/.singleton/.domain-singleton > /dev/null
+    rm $CASUAL_REPOSITORY_ROOT/middleware/.casual/unittest/.singleton/.domain-singleton > /dev/null
     cd $CASUAL_REPOSITORY_ROOT && \
         casual-make --stat --no-colors clean && \
         casual-make --stat --quiet --no-colors compile && \
