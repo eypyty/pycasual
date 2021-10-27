@@ -3,14 +3,14 @@ if ! type realpath > /dev/null 2>&1
 then
     realpath()
     {
-        local repo_root="$1"
+        local source_root="$1"
         local working_dir=$(pwd)
 
-        if echo $repo_root | grep ^/ > /dev/null
+        if echo $source_root | grep ^/ > /dev/null
         then
-            echo -n $repo_root
+            echo -n $source_root/.
         else
-            echo -n $working_dir/$repo_root
+            echo -n $working_dir/$source_root/.
         fi
     }
 fi
@@ -90,7 +90,6 @@ execute()
 
     if [[ ${BUILD_TYPE} == "docker" ]]
     then
-        cd ${SOURCE_ROOT}/casual/
         find $CASUAL_REPOSITORY_ROOT/.. -user root | xargs chmod 777
     fi
 
