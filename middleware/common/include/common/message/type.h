@@ -226,6 +226,8 @@ namespace casual
          queue_group_message_peek_reply,
          queue_group_message_remove_request = QUEUE_BASE + 330,
          queue_group_message_remove_reply,
+         queue_group_message_recover_request,
+         queue_group_message_recover_reply,         
 
          queue_group_queue_restore_request = QUEUE_BASE + 340,
          queue_group_queue_restore_reply,

@@ -738,6 +738,47 @@ namespace casual
                };
                
             } // remove
+            namespace recover
+            {
+               enum class Type : int
+               {
+                  commit,
+                  rollback
+               };
+
+               using base_request = common::message::basic_request< common::message::Type::queue_group_message_recover_request>;
+               struct Request : base_request
+               {
+
+                  using base_request::base_request;
+
+                  common::strong::queue::id queue;
+                  //! messages to recover
+                  std::vector< common::transaction::ID> trids;
+
+                  recover::Type recover_type = recover::Type::commit;
+
+                  CASUAL_CONST_CORRECT_SERIALIZE(
+                     base_request::serialize( archive);
+                     CASUAL_SERIALIZE( queue);
+                     CASUAL_SERIALIZE( trids);
+                     CASUAL_SERIALIZE( recover_type);
+                  )
+               };
+
+               using base_reply = common::message::basic_message< common::message::Type::queue_group_message_recover_reply>;
+               struct Reply : base_reply
+               {
+                  using base_reply::base_reply;
+                  //! messages that got commited
+                  std::vector< common::transaction::ID> trids;
+
+                  CASUAL_CONST_CORRECT_SERIALIZE(
+                     base_reply::serialize( archive);
+                     CASUAL_SERIALIZE( trids);
+                  )
+               };
+            }
          } // message
       } // group
 
@@ -938,6 +979,9 @@ namespace casual
 
             template<>
             struct type_traits< casual::queue::ipc::message::group::message::remove::Request> : detail::type< casual::queue::ipc::message::group::message::remove::Reply> {};
+
+            template<>
+            struct type_traits< casual::queue::ipc::message::group::message::recover::Request> : detail::type< casual::queue::ipc::message::group::message::recover::Reply> {};
 
             template<>
             struct type_traits< casual::queue::ipc::message::group::enqueue::Request> : detail::type< casual::queue::ipc::message::group::enqueue::Reply> {};

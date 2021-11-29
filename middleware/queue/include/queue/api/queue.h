@@ -7,13 +7,10 @@
 
 #pragma once
 
-
-
 #include "queue/api/message.h"
+#include "common/transaction/id.h"
 
 #include "casual/platform.h"
-#include "common/uuid.h"
-
 
 namespace casual
 {
@@ -84,6 +81,11 @@ namespace casual
       {
          std::vector< common::Uuid> remove( const std::string& queue, const std::vector< common::Uuid>& messages);
          
+         namespace recover
+         {
+            std::vector< common::transaction::ID> commit( const std::string& queuename, const std::vector< common::transaction::ID>& trids);
+            std::vector< common::transaction::ID> rollback( const std::string& queuename, const std::vector< common::transaction::ID>& trids);
+         }
       } // messages
 
       } // v1

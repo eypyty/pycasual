@@ -1139,6 +1139,66 @@ casual queue --restore <queue-name>)"
                   }
                } // remove
 
+               namespace recover
+               {
+                  auto complete = []( auto& values, bool help) -> std::vector< std::string>
+                  { 
+                     if( help) 
+                        return { "<queue>", "<trid>"};
+                     
+                     if( values.empty())
+                        return local::queues();
+                     
+                     return { "<value>"};
+                  };
+
+                  namespace commit
+                  {
+                     auto option()
+                     {
+                        auto invoke = []( const std::string& queue, transaction::ID trid, std::vector< transaction::ID> trids)
+                        {
+                           trids.insert( std::begin( trids), std::move( trid));
+                           auto committed = queue::messages::recover::commit( queue, trids);
+
+                           algorithm::for_each( committed, []( auto& trid)
+                           {
+                              std::cout << transaction::id::range::global(trid) << '\n';
+                           });
+                        };
+
+                        return argument::Option{
+                           std::move( invoke),
+                           recover::complete,
+                           {  "--recover-commit"},
+                           R"(perform recovery for a message, with commit operation)"
+                        };
+                     }
+                  } // commit
+                  namespace rollback
+                  {
+                     auto option()
+                     {
+                        auto invoke = []( const std::string& queue, transaction::ID trid, std::vector< transaction::ID> trids)
+                        {
+                           trids.insert( std::begin( trids), std::move( trid));
+                           auto rollbacked = queue::messages::recover::rollback( queue, trids);
+
+                           algorithm::for_each( rollbacked, []( auto& trid)
+                           {
+                              std::cout << transaction::id::range::global(trid) << '\n';
+                           });
+                        };
+
+                        return argument::Option{
+                           std::move( invoke),
+                           recover::complete,
+                           {  "--recover-rollback"},
+                           R"(perform recovery for a message, with rollback operation)"
+                        };
+                     }
+                  } // rollback
+               } // recover
             } // messages
 
             namespace clear
@@ -1390,6 +1450,8 @@ casual queue --metric-reset a b)"
                      local::consume::option(),
                      local::clear::option(),
                      local::messages::remove::option(),
+                     local::messages::recover::commit::option(),
+                     local::messages::recover::rollback::option(),
                      local::forward::scale::aliases::option(),
                      local::metric::reset::option(),
                      local::legend::option(),

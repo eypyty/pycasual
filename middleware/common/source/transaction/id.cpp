@@ -11,7 +11,6 @@
 #include "common/transcode.h"
 #include "common/memory.h"
 
-
 #include <ios>
 #include <sstream>
 #include <iomanip>
@@ -173,6 +172,20 @@ namespace casual
             }
             return out;
          }
+
+         std::istream& operator >> ( std::istream& in, ID& id)
+         {
+            std::string gtrid;
+            in >> gtrid;
+
+            id.xid.formatID = ID::Format::casual;
+            auto decoded = casual::common::transcode::hex::decode( gtrid);
+            algorithm::copy( decoded, id.xid.data);
+            id.xid.gtrid_length = decoded.size();
+
+            return in;
+         }
+
 
          namespace id
          {

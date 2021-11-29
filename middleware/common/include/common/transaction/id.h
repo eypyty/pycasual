@@ -110,6 +110,7 @@ namespace casual
             xid_type xid{};
 
             friend std::ostream& operator << ( std::ostream& out, const ID& id);
+            friend std::istream& operator >> ( std::istream& out, ID& id);
 
          private:
             process::Handle m_owner;

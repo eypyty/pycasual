@@ -560,6 +560,30 @@ namespace casual
          return messages;
       }
 
+      std::vector< common::transaction::ID> Queuebase::recover_commit( common::strong::queue::id queue, std::vector< common::transaction::ID> messages)
+      {
+         auto missing_message = [&]( auto& id)
+         {
+            commit( id);
+            return false;
+         };
+
+         algorithm::trim( messages, algorithm::remove_if( messages, missing_message));
+         return messages;
+      }
+
+      std::vector< common::transaction::ID> Queuebase::recover_rollback( common::strong::queue::id queue, std::vector< common::transaction::ID> messages)
+      {
+         auto missing_message = [&]( auto& id)
+         {
+            rollback( id);
+            return false;
+         };
+
+         algorithm::trim( messages, algorithm::remove_if( messages, missing_message));
+         return messages;
+      }
+
 
       void Queuebase::commit( const common::transaction::ID& id)
       {

@@ -278,7 +278,33 @@ namespace casual
                   }
                   
                } // dequeue
+               namespace recover
+               {
+                  std::vector< common::transaction::ID> perform( const std::string& queuename, 
+                     const std::vector< common::transaction::ID>& trids, 
+                     ipc::message::group::message::recover::Type type)
+                  {
+                     Trace trace{ "local::recover::perform"};
 
+                     queue::Lookup lookup{ queuename};
+
+                     using Request = ipc::message::group::message::recover::Request;
+                     Request request{ common::process::handle()};
+                     request.trids = trids;
+                     request.recover_type = type;
+
+                     auto queue = lookup();
+
+                     if( queue.order > 0)
+                        queue::error( queue::code::argument, "not possible to recover a remote queue: ", queuename);
+
+                     if( ! queue.process)
+                        queue::raise( queue::code::no_queue);
+
+                     auto reply = common::communication::ipc::call( queue.process.ipc, request);
+                     return reply.trids;
+                  }
+               }
             } // <unnamed>
          } // local
 
@@ -628,7 +654,29 @@ namespace casual
                reply >> CASUAL_NAMED_VALUE( result);
                return result;
             }
-            
+
+            namespace recover
+            {
+               std::vector< common::transaction::ID> commit( const std::string& queuename, const std::vector< common::transaction::ID>& trids)
+               {
+                  Trace trace{ "casual::queue::messages::recover::commit"};
+                  common::log::line( verbose::log, "queuename: ", queuename, ", trids: ", trids);
+
+                  using Type = ipc::message::group::message::recover::Type;
+
+                  return local::recover::perform( queuename, trids, Type::commit);
+               }
+
+               std::vector< common::transaction::ID> rollback( const std::string& queuename, const std::vector< common::transaction::ID>& trids)
+               {
+                  Trace trace{ "casual::queue::messages::recover::rollback"};
+                  common::log::line( verbose::log, "queuename: ", queuename, ", trids: ", trids);
+
+                  using Type = ipc::message::group::message::recover::Type;
+
+                  return local::recover::perform( queuename, trids, Type::rollback);
+                }
+            }
          } // messages
       } // v1
    } // queue
