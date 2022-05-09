@@ -195,14 +195,15 @@ bash \$SCRIPT_ROOT/casual/pipeline/script/package $CASUAL_VERSION $CASUAL_RELEAS
 bash \$SCRIPT_ROOT/casual/pipeline/script/post/cleanup
 """)
 
-   if ( distribution == 'centos' )
-      step([$class: 'XUnitPublisher',
-         thresholds: [[$class: 'FailedThreshold', failureThreshold: '1']],
-         tools: [[$class: 'GoogleTestType', pattern: '**/report.xml']]])
+      if ( distribution == 'centos' )
+         step([$class: 'XUnitPublisher',
+            thresholds: [[$class: 'FailedThreshold', failureThreshold: '1']],
+            tools: [[$class: 'GoogleTestType', pattern: '**/report.xml']]])
 
-   archive includes: '**/casual-middleware*.rpm'
+      archive includes: '**/casual-middleware*.rpm'
 
-   stash includes: '**/casual-middleware*.rpm', name: distribution + '_backend'
+      stash includes: '**/casual-middleware*.rpm', name: distribution + '_backend'
+   }
 }
 
 try
